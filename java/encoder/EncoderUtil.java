@@ -544,32 +544,7 @@ public abstract class EncoderUtil
 		{ return "extrainfo"; }
 	}
 	
-	public static class GenericContextInfo implements ContextInfo
-	{
-		private String _evKey;
-		// private String _exInfo;
-		
-		private List<Object> _extraList;
-		
-		public GenericContextInfo(String evkey, Object... varglist)
-		{
-			_evKey = evkey;
-			_extraList = Util.vector();
-			_extraList.add(varglist);
-		}		
-		
-		
-		public String getEventNameKey()
-		{
-			return _evKey;
-		}	
-		
-		public String getExtraInfo()
-		{
-			return _extraList.toString();
-		}
-	}
-	
+
 	public static class ImpossibleOutcomeException extends RuntimeException
 	{
 		Object _badOutcome;
@@ -598,6 +573,31 @@ public abstract class EncoderUtil
 			return errmssg;
 		}
 	}
+	
+	public static class GenericContextInfo implements ContextInfo
+	{
+		private String _evKey;
+		// private String _exInfo;
+		
+		private List<Object> _extraList;
+		
+		public GenericContextInfo(String evkey, Object... varglist)
+		{
+			_evKey = evkey;
+			_extraList = Util.listify(varglist);
+		}		
+		
+		
+		public String getEventNameKey()
+		{
+			return _evKey;
+		}	
+		
+		public String getExtraInfo()
+		{
+			return Util.join(_extraList, "::");
+		}
+	}	
 	
 	
 	public static class EmptyEventLogger implements EventLogger

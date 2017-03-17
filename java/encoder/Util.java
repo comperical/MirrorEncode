@@ -34,6 +34,11 @@ public abstract class Util
 	}
 	
 	
+	public static String join(List<Object> olist, String glue)
+	{
+		return olist.toString();	
+	}
+	
 	public static double curtime()
 	{
 		return System.currentTimeMillis();	

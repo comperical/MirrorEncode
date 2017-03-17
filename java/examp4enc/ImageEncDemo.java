@@ -110,6 +110,102 @@ public class ImageEncDemo
 		
 	}	
 	
+	public static class SmartFlushImageModeler extends ModelerTree<DumbPixelBlob>
+	{
+		private DumbPixelBlob _mirrBlob;
+		
+		// These are the actual underlying statistics. 
+		private Map<Integer, SortedMap<Short, Integer>> _statMap = Util.treemap();
+
+		// This is a Cached Cum Sum lookup, which we will rebuild every N pixels.
+		private Map<Integer, CachedSumLookup<Short>> _pred2ModMap = Util.treemap();
+				
+		public final int pixPerFlush;
+		
+		private final int _imWidth;
+		private final int _imHight;
+		
+		private int _totalPix = 0;
+		
+		SmartFlushImageModeler(int wid, int hit, int ppflush)
+		{
+			_imWidth = wid;
+			_imHight = hit;
+			
+			pixPerFlush = ppflush;
+			
+			for(int i : Util.range(-1, 256))
+			{
+				SortedMap<Short, Integer> defmap = Util.treemap();
+				
+				for(int j : Util.range(256))
+					{ defmap.put((short) j, 1); }
+				
+				_statMap.put(i, defmap);
+			}
+		}
+		
+		public void recModel(EncoderHook enchook)
+		{
+			_mirrBlob = new DumbPixelBlob(_imWidth, _imHight);
+			
+			for(int x : Util.range(_imWidth))
+			{
+				for(int y : Util.range(_imHight))
+				{
+					for(int i : Util.range(3))
+					{
+						int predictor = (x == 0 ? -1 : _mirrBlob.pixBlob[x-1][y][i]);
+						
+						CachedSumLookup<Short> cclm = getLookup4Predictor(predictor);
+						
+						EventModeler<Short> pixmod = EventModeler.build(cclm);
+						
+						if(isEncode())
+						{
+							Short origpix = _origOutcome.pixBlob[x][y][i];
+							pixmod.setOriginal(origpix);
+						}
+						
+						short result = pixmod.decodeResult(enchook);
+						
+						_mirrBlob.pixBlob[x][y][i] = result;
+						
+						Util.incHitMap(_statMap.get(predictor), result);
+					}
+					
+					_totalPix++;
+					
+					if((_totalPix % pixPerFlush) == 0)
+						{ _pred2ModMap.clear(); }
+				}
+			}
+		}
+		
+		public DumbPixelBlob getResult()
+		{
+			return _mirrBlob;	
+		}
+		
+		private CachedSumLookup<Short> getLookup4Predictor(int predictor)
+		{
+			if(_pred2ModMap.isEmpty())
+			{
+				Util.pf("Rebuilding cache maps from stats..., pixcount is %d \n", _totalPix);
+				
+				for(int pred : _statMap.keySet())
+					{ _pred2ModMap.put(pred, CachedSumLookup.build(_statMap.get(pred))); }
+			}
+			
+			Util.massert(_pred2ModMap.containsKey(predictor),
+				"Don't have a cached map for predictor %d", predictor);
+			
+			return _pred2ModMap.get(predictor);
+		}
+	}		
+	
+	
+	
 	public static class BasicImageModeler extends ModelerTree<DumbPixelBlob>
 	{
 		private DumbPixelBlob _mirrBlob;
@@ -265,33 +361,7 @@ public class ImageEncDemo
 	}
 	
 	
-	public static class TestBitmapLoad extends ArgMapRunnable
-	{
-		public void runOp() throws IOException
-		{
-			String imagepath = "/Users/burfoot/Desktop/Oak_Hill_1st_Hole.bmp";
-			
-			BufferedImage img = null;
-			try {
-				img = ImageIO.read(new File(imagepath));
-			} catch (IOException ex) 
-			{
-				ex.printStackTrace();
-				return;
-			}
-			int height = img.getHeight();
-			int width = img.getWidth();
-			
-			int amountPixel = 0;
-			int amountBlackPixel = 0;	
-			
-			DumbPixelBlob dpblob = new DumbPixelBlob(img);
-			
-			BufferedImage backim = dpblob.composeImage();
-			
-			ImageIO.write(backim, "bmp", new File("/Users/burfoot/Desktop/BackImage.bmp"));
-		}
-	}
+
 	
 	public static class BuildPredictDeltaData extends ArgMapRunnable
 	{
@@ -358,31 +428,6 @@ public class ImageEncDemo
 	}
 	
 	
-	public static class TestBasicEncode extends ArgMapRunnable
-	{
-		public void runOp() throws IOException
-		{
 
-			DumbPixelBlob dpblob = DumbPixelBlob.readFromFile("/Users/burfoot/Desktop/OrigImage.bmp");
-			
-			// BasicImageModeler encmod = new BasicImageModeler(dpblob.getWidth(), dpblob.getHight());
-			// BasicImageModeler decmod = new BasicImageModeler(dpblob.getWidth(), dpblob.getHight());
-			
-			SimplePredictionModeler encmod = new SimplePredictionModeler(dpblob.getWidth(), dpblob.getHight());
-			SimplePredictionModeler decmod = new SimplePredictionModeler(dpblob.getWidth(), dpblob.getHight());
-			
-			encmod.setOriginal(dpblob);
-			
-			byte[] encim = EncoderUtil.shrink(encmod);
-			EncoderUtil.expand(decmod, encim);
-			
-			Util.pf("Encoded byte size is %d, pixel count is %d\n", 
-						encim.length, encmod.getResult().getPixelCount());
-			
-			Util.massert(encmod.getResult().equals(decmod.getResult()),
-				"Encoded version does not match decoded version");
-		}
-	}	
-	
 	
 }	
