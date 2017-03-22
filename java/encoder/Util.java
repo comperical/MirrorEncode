@@ -194,6 +194,41 @@ public abstract class Util
 	}	
 		
 	
-
+	public static void writeData2Path(Collection datacol, String fpath) throws Exception
+	{
+		BufferedWriter bwrite = new BufferedWriter(new FileWriter(fpath));
+		
+		for(Object o : datacol)
+		{
+			bwrite.write(o.toString());
+			bwrite.write("\n");
+		}
+		
+		bwrite.close();
+	}
 	
+	public static List<String> readLineList(String fpath) throws IOException
+	{
+		return readLineList(fpath, s -> s);	
+	}
+	
+	
+	public static <A> List<A> readLineList(String fpath, Function<String, A> myfunc) throws IOException
+	{
+		BufferedReader bread = new BufferedReader(new FileReader(fpath));
+		
+		List<A> flist = Util.vector();
+		
+		while(true)
+		{
+			String s = bread.readLine();
+			
+			if(s == null)
+				{ break; }
+			
+			flist.add(myfunc.apply(s));
+		}
+		
+		return flist;
+	}
 }

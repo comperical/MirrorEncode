@@ -100,9 +100,118 @@ public class ExampleEntry
 		}
 	}	
 			
+	public static class EncodeAdaptiveExpo extends ArgMapRunnable
+	{
+		public void runOp() throws IOException
+		{
+			String expolabel = _argMap.getStr("label", "A");
+			
+			String fpath = Util.sprintf("/userdata/external/mirrenc/data/expon/lambda%s.txt", expolabel);
+			
+			List<Integer> reclist = Util.readLineList(fpath, s -> Integer.valueOf(s));
+			
+			Util.pf("Read %d records from path %s\n", reclist.size(), fpath);
+			
+			double startup = Util.curtime();
+			double lambda = _argMap.getDbl("lambda", .005);
+			
+			AdaptiveExpoModeler encmod = new AdaptiveExpoModeler(reclist.size(), 10000);
+			AdaptiveExpoModeler decmod = new AdaptiveExpoModeler(reclist.size(), 10000);
+			
+			encmod.setOriginal(reclist);
+			
+			byte[] encdata = EncoderUtil.shrink(encmod);
+			EncoderUtil.expand(decmod, encdata);
+			
+			Util.massert(decmod.getResult().equals(reclist),
+				  	"Decoded data fails to match original");
+			
+			double netbitlen = encdata.length*8;
+			int bswancount = encmod.getBlackSwanCount();
+			
+			Util.pf("Encoding correct, required %.03f bits, %.03f bit per item, %d Black Swans, took %.03f sec\n",
+					netbitlen, netbitlen/reclist.size(), bswancount, (Util.curtime()-startup)/1000);
+		}
+	}		
 	
 	
+	public static class EncodeExpoData extends ArgMapRunnable
+	{
+		public void runOp() throws IOException
+		{
+			String expolabel = _argMap.getStr("label", "A");
+			
+			String fpath = Util.sprintf("/userdata/external/mirrenc/data/expon/lambda%s.txt", expolabel);
+			
+			List<Integer> reclist = Util.readLineList(fpath, s -> Integer.valueOf(s));
+			
+			Util.pf("Read %d records from path %s\n", reclist.size(), fpath);
+			
+			double startup = Util.curtime();
+			double lambda = _argMap.getDbl("lambda", .005);
+			
+			ExpoDataModeler encmod = new ExpoDataModeler(reclist.size(), lambda, 10000);
+			ExpoDataModeler decmod = new ExpoDataModeler(reclist.size(), lambda, 10000);
+			
+			encmod.setOriginal(reclist);
+			
+			byte[] encdata = EncoderUtil.shrink(encmod);
+			EncoderUtil.expand(decmod, encdata);
+			
+			Util.massert(decmod.getResult().equals(reclist),
+				  	"Decoded data fails to match original");
+			
+			double netbitlen = encdata.length*8;
+			int bswancount = encmod.getBlackSwanCount();
+			
+			Util.pf("Encoding correct, required %.03f bits, %.03f bit per item, %d Black Swans, took %.03f sec\n",
+					netbitlen, netbitlen/reclist.size(), bswancount, (Util.curtime()-startup)/1000);
+		}
+	}	
 	
+	
+	public static class GenerateExponData extends ArgMapRunnable
+	{
+		public void runOp() throws Exception
+		{
+			Map<String, Double> lmap = getLambdaMap();
+			Random rng = new Random(10000);
+			int numsamp = _argMap.getInt("numsamp", 10000);
+			
+			for(String lkey : lmap.keySet())
+			{
+				List<Integer> datalist = Util.vector();
+				
+				double lambda = lmap.get(lkey);
+				
+				for(int i : Util.range(numsamp))
+				{
+					double u = rng.nextDouble();
+					double x = Math.log(1-u)/(-lambda);
+					
+					// Util.pf("Generated u=%.03f, x=%.03f\n", u, x);
+					
+					datalist.add((int) Math.floor(x));
+				}
+				
+				String fpath = Util.sprintf("/userdata/external/mirrenc/data/expon/lambda%s.txt", lkey);
+				
+				Util.writeData2Path(datalist, fpath);				
+				
+				Util.pf("Wrote %d records to %s for lambda=%.03f\n", datalist.size(), fpath, lambda);
+			}
+		}
+		
+		private Map<String, Double> getLambdaMap()
+		{
+			Map<String, Double> lmap = Util.treemap();
+			lmap.put("A", .1);
+			lmap.put("B", .05);
+			lmap.put("C", .01);
+			lmap.put("D", .005);
+			return lmap;
+		}
+	}
 	
 	public static void main(String[] args) throws Exception
 	{

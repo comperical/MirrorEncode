@@ -15,24 +15,31 @@ import net.danburfoot.encoder.EncoderUtil.*;
 
 public class ExponentialDataDemo
 {
-	public static class ExpoDataModeler extends ModelerTree<List<Integer>>
+	public static class AdaptiveExpoModeler extends ModelerTree<List<Integer>>
 	{
+		private static int RECALC_INTERVAL = 10000;
+		
 		public final int num2Send;
+		
+		public final int topRange;
 		
 		private List<Integer> _mirrList = Util.vector();
 		
-		private CachedSumLookup<Integer> _cachedLookup;
+		private CachedSumLookup<Integer> _expoLookup;
+		private CachedSumLookup<Integer> _flatLookup;
+		private CachedSumLookup<Boolean> _swanLookup;	
+			
+		private int lastOkayValue = -1;
 		
-		private int endSequence = -1;
+		private int _blackSwanCount = 0;
 		
-		public ExpoDataModeler(int n2s, double prob2stop)
+		public AdaptiveExpoModeler(int n2s, int trange)
 		{
 			num2Send = n2s;
 			
-			Util.massert(0.0001 < prob2stop && prob2stop < .9999,
-				"Stop probability must be in (.0001, .9999), found %.06f", prob2stop);
+			topRange = trange;
 			
-			buildCachedLookup(prob2stop);
+			reBuildLookup();
 		}
 		
 		public void setOriginalSub()
@@ -45,31 +52,46 @@ public class ExponentialDataDemo
 		{
 			while(_mirrList.size() < num2Send)
 			{
-				int mirrtotal = 0;
-				
-				while(true)
+				// Encode T/F, depending on whether the outcome is a "black swan"
+				boolean mirrblack;
 				{
-					EventModeler<Integer> nextvalmod = EventModeler.build(_cachedLookup);
+					EventModeler<Boolean> bswanmod = EventModeler.build(_swanLookup);
+					
+					if(isEncode())
+					{
+						boolean origblack = _origOutcome.get(_mirrList.size()) > lastOkayValue;
+						bswanmod.setOriginal(origblack);
+					}
+					
+					mirrblack = bswanmod.decodeResult(enchook);
+					
+					_blackSwanCount += (mirrblack ? 1 : 0);
+				}
+				
+				
+				{
+					// Okay, use either the flat lookup map, or the expo map, depending on whether
+					// value is a BlackSwan or not
+					EventModeler<Integer> nextvalmod = mirrblack ? 
+										EventModeler.build(_flatLookup) : 
+										EventModeler.build(_expoLookup);
 					
 					if(isEncode())
 					{
 						int origval = _origOutcome.get(_mirrList.size());
-						int val2send = origval - mirrtotal;
-						
-						val2send = (val2send > endSequence ? endSequence : val2send);
-						
-						nextvalmod.setOriginal(val2send);
+						nextvalmod.setOriginal(origval);
 					}
 					
 					int mirrnext = nextvalmod.decodeResult(enchook);
 					
-					mirrtotal += mirrnext;
-					
-					if(mirrnext < endSequence)
-						{ break; }
+					_mirrList.add(mirrnext);
 				}
 				
-				_mirrList.add(mirrtotal);
+				if((_mirrList.size() % RECALC_INTERVAL) == 0)
+					{ reBuildLookup(); }
+					
+				
+				// Util.pf("Sent value %d\n", mirrnext);
 			}
 		}
 		
@@ -81,25 +103,218 @@ public class ExponentialDataDemo
 			return _mirrList;	
 		}
 		
-		private void buildCachedLookup(double prob2stop)
+		public int getBlackSwanCount()
+		{
+			return _blackSwanCount;	
+		}
+		
+		private void reBuildLookup()
 		{	
-			int remprobmass = 1_000_000;
+			double lambda = getLambdaEstimate();
 			
-			SortedMap<Integer, Integer> cmap = Util.treemap();
+			// Util.pf("Lambda est is %.03f\n", lambda);
 			
-			while(remprobmass > 1_000)
+			SortedMap<Integer, Integer> dmap = Util.treemap();
+			
+			double factor = Math.exp(-lambda);
+			double w = 1_000_000;
+			
+			for(int i = 0; i < topRange; i++)
 			{
-				int nextprob = (int) Math.floor(prob2stop * remprobmass);
-				cmap.put(cmap.size(), nextprob);
+				int floorw = (int) Math.floor(w);
 				
-				remprobmass -= nextprob;
+				if(floorw == 0)
+				{
+					lastOkayValue = i-1;
+					// Util.pf("Got floorW=0, last non-zero was %d\n", lastOkayValue);	
+					break;
+				}
+				
+				dmap.put(i, floorw);
+				
+				w *= factor;
+				
+				//if(i < 10)
+				//	{ Util.pf("%s\n", dmap); }
 			}
 			
-			endSequence = cmap.size();
+			_expoLookup = CachedSumLookup.build(dmap);
 			
-			cmap.put(endSequence, remprobmass);
+			{
+				SortedMap<Boolean, Integer> swanmap = Util.treemap();
+				swanmap.put(true, 1);
+				swanmap.put(false, 100_000);
+				_swanLookup = CachedSumLookup.build(swanmap);
+			}
 			
-			_cachedLookup = CachedSumLookup.build(cmap);
+			{
+				SortedMap<Integer, Integer> flatmap = Util.treemap();
+				
+				for(int x : Util.range(lastOkayValue+1, topRange))
+					{ flatmap.put(x, 1); }
+					
+				_flatLookup = CachedSumLookup.build(flatmap);				
+			}
+			
+			Util.pf(".");
+			
+			
+			// Util.pf("Built cached lookup, total size is %d, endSequence is %d\n", cmap.size(), endSequence);
+		}
+		
+		private double getLambdaEstimate()
+		{
+			// If we don't have any data yet, just guess!!
+			if(_mirrList.isEmpty())
+				{ return .001; }
+			
+			double m = 0D;
+			
+			for(int result : _mirrList)
+				{ m += result; }
+			
+			m /= _mirrList.size();
+			
+			// Lambda = 1/mean
+			return 1/m;
+		}
+	}	
+	
+	
+	public static class ExpoDataModeler extends ModelerTree<List<Integer>>
+	{
+		public final int num2Send;
+		
+		public final int topRange;
+		
+		private List<Integer> _mirrList = Util.vector();
+		
+		private CachedSumLookup<Integer> _expoLookup;
+		private CachedSumLookup<Integer> _flatLookup;
+		private CachedSumLookup<Boolean> _swanLookup;
+		
+		
+		private int endSequence = -1;
+		
+		private int lastOkayValue = -1;
+		
+		private int _blackSwanCount = 0;
+		
+		public ExpoDataModeler(int n2s, double lambda, int trange)
+		{
+			num2Send = n2s;
+			
+			topRange = trange;
+			
+			buildCachedLookup(lambda);
+		}
+		
+		public void setOriginalSub()
+		{
+			Util.massert(_origOutcome.size() == num2Send,
+				"Expected to see %d outcomes, but got %d", num2Send, _origOutcome.size());
+		}
+		
+		public void recModel(EncoderHook enchook)
+		{
+			while(_mirrList.size() < num2Send)
+			{
+				// Encode T/F, depending on whether the outcome is a "black swan"
+				boolean mirrblack;
+				{
+					EventModeler<Boolean> bswanmod = EventModeler.build(_swanLookup);
+					
+					if(isEncode())
+					{
+						boolean origblack = _origOutcome.get(_mirrList.size()) > lastOkayValue;
+						bswanmod.setOriginal(origblack);
+					}
+					
+					mirrblack = bswanmod.decodeResult(enchook);
+					
+					_blackSwanCount += (mirrblack ? 1 : 0);
+				}
+				
+				
+				{
+					// Okay, use either the flat lookup map, or the expo map, depending on whether
+					// value is a BlackSwan or not
+					EventModeler<Integer> nextvalmod = mirrblack ? 
+										EventModeler.build(_flatLookup) : 
+										EventModeler.build(_expoLookup);
+					
+					if(isEncode())
+					{
+						int origval = _origOutcome.get(_mirrList.size());
+						nextvalmod.setOriginal(origval);
+					}
+					
+					int mirrnext = nextvalmod.decodeResult(enchook);
+					
+					_mirrList.add(mirrnext);
+				}
+				
+				// Util.pf("Sent value %d\n", mirrnext);
+			}
+		}
+		
+		public List<Integer> getResult()
+		{
+			Util.massert(_mirrList.size() == num2Send,
+				"Attempt to get result before encoding is finished");
+			
+			return _mirrList;	
+		}
+		
+		public int getBlackSwanCount()
+		{
+			return _blackSwanCount;	
+		}
+		
+		private void buildCachedLookup(double lambda)
+		{	
+			SortedMap<Integer, Integer> dmap = Util.treemap();
+			
+			double factor = Math.exp(-lambda);
+			double w = 1_000_000;
+			
+			for(int i = 0; i < topRange; i++)
+			{
+				int floorw = (int) Math.floor(w);
+				
+				if(floorw == 0)
+				{
+					lastOkayValue = i-1;
+					Util.pf("Got floorW=0, last non-zero was %d\n", lastOkayValue);	
+					break;
+				}
+				
+				dmap.put(i, floorw);
+				
+				w *= factor;
+				
+				//if(i < 10)
+				//	{ Util.pf("%s\n", dmap); }
+			}
+			
+			_expoLookup = CachedSumLookup.build(dmap);
+			
+			{
+				SortedMap<Boolean, Integer> swanmap = Util.treemap();
+				swanmap.put(true, 1);
+				swanmap.put(false, 100_000);
+				_swanLookup = CachedSumLookup.build(swanmap);
+			}
+			
+			{
+				SortedMap<Integer, Integer> flatmap = Util.treemap();
+				
+				for(int x : Util.range(lastOkayValue+1, topRange))
+					{ flatmap.put(x, 1); }
+					
+				_flatLookup = CachedSumLookup.build(flatmap);				
+			}
+			
 			
 			// Util.pf("Built cached lookup, total size is %d, endSequence is %d\n", cmap.size(), endSequence);
 		}
@@ -257,75 +472,8 @@ public class ExponentialDataDemo
 		return null;
 	}
 	
-	public static class CreateExpoData extends ArgMapRunnable
-	{
-		
-		public void runOp()
-		{
-			Random r = new Random();
-			double p = _argMap.getDbl("prob2stop", .1);
-			int numsamp = _argMap.getInt("numsamp", 1_000_000);
-			String fname = _argMap.getStr("filename");
-			
-			List<String> reclist = Util.vector();
-			
-			for(int i : Util.range(numsamp))
-			{
-				int exposample = sampleExpoData(r, p);
-				reclist.add(exposample+"");
-			}
-			
-			String fullpath = Util.sprintf("/userdata/lifecode/datadir/encoderdemo/%s.txt", fname);
-			
-			Util.massert(false, "need to re-implement");
-			
-			/*
-			FileUtils.getWriterUtil()
-					.setFile(fullpath)
-					.writeLineListE(reclist);
-					
-			*/
-			Util.pf("Wrote %d records to path %s\n", reclist.size(), fullpath);
-		}
-	}
 	
-	public static class EncodeExpoData extends ArgMapRunnable
-	{
-		
-		public void runOp()
-		{
-			double modelprob = _argMap.getDbl("modelprob", .01);
-			String fname = _argMap.getStr("filename");
-			
-			String fullpath = Util.sprintf("/userdata/lifecode/datadir/encoderdemo/%s.txt", fname);
-			
-			List<Integer> datalist = readDataList(fullpath);
-			
-			Util.pf("Read %d data items from path %s\n", datalist.size(), fullpath);
-			
-			double startup = Util.curtime();
-			
-			ExpoDataModeler encmod = new ExpoDataModeler(datalist.size(), modelprob);
-			ExpoDataModeler decmod = new ExpoDataModeler(datalist.size(), modelprob);
-			
-			encmod.setOriginal(datalist);
-			
-			byte[] encdata = EncoderUtil.shrink(encmod);
-			EncoderUtil.expand(decmod, encdata);
-			
-			Util.massert(decmod.getResult().equals(datalist),
-				  	"Decoded data fails to match original");
-			
-			double netbitlen = encdata.length*8;
-			
-			Util.pf("Encoding correct, required %.03f bits, %.03f bit per item, took %.03f sec\n",
-					netbitlen, netbitlen/datalist.size(), (Util.curtime()-startup)/1000);
-			
-			
-			
-			
-		}
-	}
+
 	
 	public static class ShowExpoDistInfo extends ArgMapRunnable
 	{
