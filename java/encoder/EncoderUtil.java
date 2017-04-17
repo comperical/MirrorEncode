@@ -562,8 +562,8 @@ public abstract class EncoderUtil
 		
 		public String getMessage()
 		{
-			String errmssg = Util.sprintf("Outcome %s::%s not found in probmap for EventModeler %s", 
-							_badOutcome.getClass().getSimpleName(), _badOutcome, _modClass.getName());
+			String errmssg = Util.sprintf("Outcome %s::%s not found in in modeler PDF", 
+							_badOutcome.getClass().getSimpleName(), _badOutcome);
 			
 			if(_contextInfo != null)
 				{ errmssg += Util.sprintf(" Context is %s :: %s ", _contextInfo.getEventNameKey(), _contextInfo.getExtraInfo()); }

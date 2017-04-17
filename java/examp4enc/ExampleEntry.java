@@ -213,6 +213,39 @@ public class ExampleEntry
 		}
 	}
 	
+	public static class RunStrEncDemo extends ArgMapRunnable
+	{
+		public void runOp() throws Exception
+		{
+			String modeltype = _argMap.getStr("modeltype");
+			
+			int trunclen = _argMap.getInt("trunc2len", Integer.MAX_VALUE);
+			
+			String datastr = StringEncDemo.getBookData("A", trunclen);
+						
+			Util.pf("Got data string length %d\n", datastr.length());
+			
+			double startup = Util.curtime();
+			
+			ModelerTree<String> encmod = StringEncDemo.getTextModeler(modeltype, datastr.length());
+			ModelerTree<String> decmod = StringEncDemo.getTextModeler(modeltype, datastr.length());
+			
+			encmod.setOriginal(datastr);
+			
+			byte[] bytebuf = EncoderUtil.shrink(encmod);
+			EncoderUtil.expand(decmod, bytebuf);
+			String decresult = decmod.getResult();
+			
+			Util.massert(datastr.equals(decresult),
+				"Discrepancy between encoded data and original");
+			
+			Util.pf("Encode success confirmed, required %d bytes, %.03f byte/char, took %.03f sec\n", 
+				bytebuf.length, ((double) bytebuf.length)/datastr.length(), (Util.curtime()-startup)/1000); 
+		}
+	}		
+	
+	
+	
 	public static void main(String[] args) throws Exception
 	{
 		Util.massert(args.length > 0,

@@ -34,7 +34,7 @@ public abstract class Util
 	}
 	
 	
-	public static String join(List<Object> olist, String glue)
+	public static String join(List<? extends Object> olist, String glue)
 	{
 		return olist.toString();	
 	}
