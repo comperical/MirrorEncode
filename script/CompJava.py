@@ -4,61 +4,8 @@ import re, os, sys, fileinput
 
 from shutil import copyfile
 
-# TODO: even this is not really necessary, we can get the package list from 
-# Builder4J
-def getPackageList():
-	return LocalConf.getPackageList()
- 	
-def getClassFileCount(dstdir):
-	
-	kflist = [kidfile for kidfile in os.listdir(dstdir) if kidfile.endswith(".class")]
-	
-	return len(kflist)
-		
-def getPickupPackList():
-	
-	jb = LocalConf.getBuilder4J()
-	jb.findPackSet()
-	
-	packlist = getPackageList()
-	
-	for i in range(len(packlist)):
-		
-		classdstdir = jb.getDstDir4ShortPack(packlist[i])		
-		
-		if getClassFileCount(classdstdir) == 0:
-			return packlist[i:]
-			
+INSTALL_DIR = "/userdata/external/mirrenc"
 
-	print "Attempted to resume, but found no empty class file directories, maybe you need to run CleanJClass?"
-	exit(1)
-	
- 	
-def buildPackList(packlist):
-	
-	# First clear out the compile error file
-	if os.path.exists(LocalConf.getCompErrorPath()):
-		os.remove(LocalConf.getCompErrorPath())
-		print "Deleted old compile error file"
-	
-	jb = LocalConf.getBuilder4J()
-	
-	jb.addExtraArgs("-Xlint:unchecked -Xlint:deprecation")
-	jb.findPackSet()
-	
-	for onepack in packlist:
-		jb.buildSimplePack(onepack)
-		
-		# If there are compile errors, don't try to keep going
-		if os.path.getsize(LocalConf.getCompErrorPath()) > 0:
-			print "Found compile errors in package %s" % onepack
-			
-			# Okay, want to delete class files in the output directory, so that the "pickup" 
-			# option will work.
-			delcall = "rm %s/*.class" % (jb.getDstDir4ShortPack(onepack))
-			os.system(delcall)			
-			break
-		
 def getSrcFileList():
 	return ["EncoderUtil", "Symbol", "HighPrecCoder", "EventModeler", "ArithBitio", "ModelerTree"]
 		
@@ -83,7 +30,7 @@ def copyCode2Dir():
 
 def compileDir(dirname):
 
-	jcall = "javac -cp /userdata/external/mirrenc/jclass -d /userdata/external/mirrenc/jclass /userdata/external/mirrenc/java/%s/*.java" % (dirname)
+	jcall = "javac -cp %s/jclass -d %s/jclass %s/java/%s/*.java" % (INSTALL_DIR, INSTALL_DIR, INSTALL_DIR, dirname)
 	
 	print("%s" % (jcall))
 	
@@ -97,7 +44,7 @@ if __name__ == "__main__":
 	2) Compile it
 	""" 
 	
-	copyCode2Dir()
+	# copyCode2Dir()
 
 	compileDir('encoder')
 	compileDir('examp4enc')
