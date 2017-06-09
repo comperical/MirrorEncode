@@ -52,7 +52,7 @@ public abstract class EncoderUtil
 		public <T extends Comparable<T>> void logEvent(EventModeler<T> evmod, T outc, Symbol symtarg, int depth);
 		
 		// These don't do anything by default, use RegionCodeLengthLogger
-		// To turn them on.
+		// To turn xthem on.
 		public default void startRegion(Enum e) { }
 		
 		public default void endRegion(Enum e) { }
@@ -228,7 +228,6 @@ public abstract class EncoderUtil
 			if(_lowHghMap != null)
 				{ return; }
 				
-			// Util.massert(false, "This code is turned off!!");
 			
 			_lowHghMap = Util.treemap();
 			_lookupMap = Util.treemap();
@@ -324,6 +323,7 @@ public abstract class EncoderUtil
 		return getDivisorNScale(cmap, x -> true);	
 	}
 	
+	
 	// Okay, want a good divisor we can use that ensures:
 	// - Total is less than MAX_SCALE under division* by div,
 	// where division* means divide but with minimum of 1.	
@@ -351,16 +351,6 @@ public abstract class EncoderUtil
 		return null;
 	}
 	
-	private static <T> long sumWithDivide(Map<T, Integer> cmap, Predicate<T> predfunc, int curdiv)
-	{
-		return cmap.entrySet()
-				.stream()
-				.filter(me -> predfunc.test(me.getKey()))
-				.map(me -> me.getValue())
-				.map(val -> (val > curdiv ? (val / curdiv) : 1))
-				.collect(Collectors.summingLong(x -> x));
-	}	
-	
 	private static long sumWithDivide(List<Integer> okaylist, int curdiv)
 	{
 		long t = 0L;
@@ -372,6 +362,59 @@ public abstract class EncoderUtil
 		
 		return t;
 	}		
+	
+	public static  class BufferedLookupTool<T extends Comparable<T>>
+	{
+		private SortedMap<T, Integer> _countMap = Util.treemap();
+		
+		private SortedMap<T, Integer> _extraMap = Util.treemap();
+		
+		private CachedSumLookup<T> _lookupTool;
+		
+		public BufferedLookupTool(Map<T, Integer> initmap)
+		{
+			_countMap.putAll(initmap);	
+			
+			_lookupTool = CachedSumLookup.build(_countMap);
+		}
+		
+		public static <R extends Comparable<R>> BufferedLookupTool<R> build(Map<R, Integer> initmap)
+		{
+			return new BufferedLookupTool<R>(initmap);	
+		}
+		
+		public void reportResult(T item)
+		{
+			Util.incHitMap(_extraMap, item);
+		}
+		
+		public CachedSumLookup<T> getCurLookupTool()
+		{
+			return _lookupTool;
+		}
+		
+		public void flush()
+		{
+			for(Map.Entry<T, Integer> me : _extraMap.entrySet())
+			{
+				Util.incHitMap(_countMap, me.getKey(), me.getValue());	
+			}
+			
+			_extraMap.clear();
+			
+			_lookupTool = CachedSumLookup.build(_countMap);
+		}
+		
+		public boolean haveBaseItem(T item)
+		{
+			return _countMap.containsKey(item);
+		}	
+		
+		public boolean haveExtraItem(T item)
+		{
+			return _extraMap.containsKey(item);
+		}
+	}
 	
 	
 	

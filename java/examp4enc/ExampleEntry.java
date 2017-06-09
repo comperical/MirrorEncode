@@ -15,15 +15,16 @@ import net.danburfoot.encoder.EncoderUtil.*;
 
 import net.danburfoot.examp4enc.ImageEncDemo.*; 
 import net.danburfoot.examp4enc.ExponentialDataDemo.*;
+import net.danburfoot.examp4enc.ExampleUtil.*;
 
 // Entry point for all code in the Example package.
 public class ExampleEntry
 {
-	public static class TestBitmapLoad extends ArgMapRunnable
+	public static class PrepareImageFile extends ArgMapRunnable
 	{
 		public void runOp() throws IOException
 		{
-			String imagepath = "/Users/burfoot/Desktop/Oak_Hill_1st_Hole.bmp";
+			String imagepath = _argMap.getStr("imagepath");
 			
 			BufferedImage img = null;
 			try {
@@ -43,187 +44,90 @@ public class ExampleEntry
 			
 			BufferedImage backim = dpblob.composeImage();
 			
-			ImageIO.write(backim, "bmp", new File("/Users/burfoot/Desktop/BackImage.bmp"));
+			String targetpath = ExampleUtil.getDataFilePath(EncodeDataType.image, getBitMapFilePath(new File(imagepath)));
+			
+			ImageIO.write(backim, "bmp", new File(targetpath));
+			
+			Util.pf("Wrote bit map file to %s\n", targetpath);
 		}
-	}	
-	
-	public static class TestBasicEncode extends ArgMapRunnable
-	{
-		public void runOp() throws IOException
-		{
+		
+		private String getBitMapFilePath(File imagefile)
+		{	
+			String bname = imagefile.getName();
+			String[] base_ext = bname.split("\\.");
 
-			DumbPixelBlob dpblob = DumbPixelBlob.readFromFile("/userdata/external/mirrenc/data/OrigImage.bmp");
+			Util.massert(base_ext.length == 2, "Expected two tokens here, got %d, for string %s", base_ext.length, bname);
+			return base_ext[0] + ".bmp";
+		}
+	}	
+	
+	public static class TestImageEncode extends ArgMapRunnable
+	{
+		public void runOp() throws IOException
+		{
+			String bitmapname = _argMap.getStr("bitmapname") + ".bmp";
 			
-			// BasicImageModeler encmod = new BasicImageModeler(dpblob.getWidth(), dpblob.getHight());
-			// BasicImageModeler decmod = new BasicImageModeler(dpblob.getWidth(), dpblob.getHight());
+			DumbPixelBlob dpblob = DumbPixelBlob.readFromFile(ExampleUtil.getImageFile(bitmapname));
 			
-			SimplePredictionModeler encmod = new SimplePredictionModeler(dpblob.getWidth(), dpblob.getHight());
-			SimplePredictionModeler decmod = new SimplePredictionModeler(dpblob.getWidth(), dpblob.getHight());
+			BlobImageModeler encmod = getModeler(_argMap, dpblob);
+			BlobImageModeler decmod = getModeler(_argMap, dpblob);
+			
+			Util.pf("Using modeler class %s\n", encmod.getClass().getSimpleName());
 			
 			encmod.setOriginal(dpblob);
 			
+			double startup = Util.curtime();
 			byte[] encim = EncoderUtil.shrink(encmod);
 			EncoderUtil.expand(decmod, encim);
 			
-			Util.pf("Encoded byte size is %d, pixel count is %d\n", 
-						encim.length, encmod.getResult().getPixelCount());
+			int extramodsize = encmod.getExtraModelCost();
+			double bitpixrate = (encim.length + extramodsize) * 8;
+			bitpixrate /= encmod.getResult().getPixelCount();
+			
+			Util.pf("Encoded byte size is %d, extra size is %d, pixel count is %d,  %.03f bit/pixel, took %.03f sec\n", 
+						encim.length, extramodsize, encmod.getResult().getPixelCount(), bitpixrate, (Util.curtime()-startup)/1000);
 			
 			Util.massert(encmod.getResult().equals(decmod.getResult()),
 				"Encoded version does not match decoded version");
 		}
-	}	
 		
-	public static class TestSmartFlush extends ArgMapRunnable
-	{
-		public void runOp() throws IOException
+		static BlobImageModeler getModeler(ArgMap themap, DumbPixelBlob dpblob) throws IOException
 		{
-			int ppflush = _argMap.getInt("ppflush", 1000);
+			String modelername = themap.getStr("modelername");
 			
-			DumbPixelBlob dpblob = DumbPixelBlob.readFromFile("/userdata/external/mirrenc/data/OrigImage.bmp");
+			if(modelername.equals("uniform"))
+				{ return new UniformImageModeler(dpblob.getWidth(), dpblob.getHight()); }
+					
+			if(modelername.equals("adaptivebasic"))
+				{ return new AdaptiveBasicModeler(dpblob.getWidth(), dpblob.getHight()); }
 			
-			// BasicImageModeler encmod = new BasicImageModeler(dpblob.getWidth(), dpblob.getHight());
-			// BasicImageModeler decmod = new BasicImageModeler(dpblob.getWidth(), dpblob.getHight());
+			if(modelername.equals("offlinepredict"))
+				{ return new OfflinePredictionModeler(dpblob.getWidth(), dpblob.getHight()); } 
 			
-			SmartFlushImageModeler encmod = new SmartFlushImageModeler(dpblob.getWidth(), dpblob.getHight(), ppflush);
-			SmartFlushImageModeler decmod = new SmartFlushImageModeler(dpblob.getWidth(), dpblob.getHight(), ppflush);
-			
-			encmod.setOriginal(dpblob);
-			
-			byte[] encim = EncoderUtil.shrink(encmod);
-			EncoderUtil.expand(decmod, encim);
-			
-			Util.pf("Encoded byte size is %d, pixel count is %d\n", 
-						encim.length, encmod.getResult().getPixelCount());
-			
-			Util.massert(encmod.getResult().equals(decmod.getResult()),
-				"Encoded version does not match decoded version");
-		}
-	}	
-			
-	public static class EncodeAdaptiveExpo extends ArgMapRunnable
-	{
-		public void runOp() throws IOException
-		{
-			String expolabel = _argMap.getStr("label", "A");
-			
-			String fpath = Util.sprintf("/userdata/external/mirrenc/data/expon/lambda%s.txt", expolabel);
-			
-			List<Integer> reclist = Util.readLineList(fpath, s -> Integer.valueOf(s));
-			
-			Util.pf("Read %d records from path %s\n", reclist.size(), fpath);
-			
-			double startup = Util.curtime();
-			double lambda = _argMap.getDbl("lambda", .005);
-			
-			AdaptiveExpoModeler encmod = new AdaptiveExpoModeler(reclist.size(), 10000);
-			AdaptiveExpoModeler decmod = new AdaptiveExpoModeler(reclist.size(), 10000);
-			
-			encmod.setOriginal(reclist);
-			
-			byte[] encdata = EncoderUtil.shrink(encmod);
-			EncoderUtil.expand(decmod, encdata);
-			
-			Util.massert(decmod.getResult().equals(reclist),
-				  	"Decoded data fails to match original");
-			
-			double netbitlen = encdata.length*8;
-			int bswancount = encmod.getBlackSwanCount();
-			
-			Util.pf("Encoding correct, required %.03f bits, %.03f bit per item, %d Black Swans, took %.03f sec\n",
-					netbitlen, netbitlen/reclist.size(), bswancount, (Util.curtime()-startup)/1000);
-		}
-	}		
-	
-	
-	public static class EncodeExpoData extends ArgMapRunnable
-	{
-		public void runOp() throws IOException
-		{
-			String expolabel = _argMap.getStr("label", "A");
-			
-			String fpath = Util.sprintf("/userdata/external/mirrenc/data/expon/lambda%s.txt", expolabel);
-			
-			List<Integer> reclist = Util.readLineList(fpath, s -> Integer.valueOf(s));
-			
-			Util.pf("Read %d records from path %s\n", reclist.size(), fpath);
-			
-			double startup = Util.curtime();
-			double lambda = _argMap.getDbl("lambda", .005);
-			
-			ExpoDataModeler encmod = new ExpoDataModeler(reclist.size(), lambda, 10000);
-			ExpoDataModeler decmod = new ExpoDataModeler(reclist.size(), lambda, 10000);
-			
-			encmod.setOriginal(reclist);
-			
-			byte[] encdata = EncoderUtil.shrink(encmod);
-			EncoderUtil.expand(decmod, encdata);
-			
-			Util.massert(decmod.getResult().equals(reclist),
-				  	"Decoded data fails to match original");
-			
-			double netbitlen = encdata.length*8;
-			int bswancount = encmod.getBlackSwanCount();
-			
-			Util.pf("Encoding correct, required %.03f bits, %.03f bit per item, %d Black Swans, took %.03f sec\n",
-					netbitlen, netbitlen/reclist.size(), bswancount, (Util.curtime()-startup)/1000);
-		}
-	}	
-	
-	
-	public static class GenerateExponData extends ArgMapRunnable
-	{
-		public void runOp() throws Exception
-		{
-			Map<String, Double> lmap = getLambdaMap();
-			Random rng = new Random(10000);
-			int numsamp = _argMap.getInt("numsamp", 10000);
-			
-			for(String lkey : lmap.keySet())
+			if(modelername.equals("adaptivepredict"))
 			{
-				List<Integer> datalist = Util.vector();
-				
-				double lambda = lmap.get(lkey);
-				
-				for(int i : Util.range(numsamp))
-				{
-					double u = rng.nextDouble();
-					double x = Math.log(1-u)/(-lambda);
-					
-					// Util.pf("Generated u=%.03f, x=%.03f\n", u, x);
-					
-					datalist.add((int) Math.floor(x));
-				}
-				
-				String fpath = Util.sprintf("/userdata/external/mirrenc/data/expon/lambda%s.txt", lkey);
-				
-				Util.writeData2Path(datalist, fpath);				
-				
-				Util.pf("Wrote %d records to %s for lambda=%.03f\n", datalist.size(), fpath, lambda);
+				int ppflush = themap.getInt("ppflush", 1000);
+				return new AdaptivePredictionModeler(dpblob.getWidth(), dpblob.getHight(), ppflush); 
 			}
+			
+			Util.massert(false, "No modelername found for string %s, please check spelling", modelername);
+			return null;
 		}
 		
-		private Map<String, Double> getLambdaMap()
-		{
-			Map<String, Double> lmap = Util.treemap();
-			lmap.put("A", .1);
-			lmap.put("B", .05);
-			lmap.put("C", .01);
-			lmap.put("D", .005);
-			return lmap;
-		}
-	}
+	}	
+		
 	
 	public static class RunStrEncDemo extends ArgMapRunnable
 	{
 		public void runOp() throws Exception
 		{
+			String bookname = _argMap.getStr("bookname", "Sherlock");
 			String modeltype = _argMap.getStr("modeltype");
-			
 			int trunclen = _argMap.getInt("trunc2len", Integer.MAX_VALUE);
 			
-			String datastr = StringEncDemo.getBookData("A", trunclen);
+			String datastr = StringEncDemo.getBookData(bookname, trunclen);
 						
-			Util.pf("Got data string length %d\n", datastr.length());
+			Util.pf("Got string length %d for book %s\n", datastr.length(), bookname);
 			
 			double startup = Util.curtime();
 			
@@ -255,6 +159,11 @@ public class ExampleEntry
 		
 		ArgMap themap = ArgMap.getClArgMap(args);
 		ArgMapRunnable amr;
+		
+		String installdir = themap.getStr("installdir");
+		ExampleUtil.setInstallDir(installdir);
+		
+		
 		
 		try {
 			Class amrclass = Class.forName(fullclass);	

@@ -13,18 +13,32 @@ import net.danburfoot.shared.Util.*;
 import net.danburfoot.encoder.*;
 import net.danburfoot.encoder.EncoderUtil.*;
 
+import net.danburfoot.examp4enc.ExampleUtil.*;
+
 public class ImageEncDemo
 {
-	public static class SimplePredictionModeler extends ModelerTree<DumbPixelBlob>
+	
+	public static abstract class BlobImageModeler extends ModelerTree<DumbPixelBlob>
 	{
+		public int getExtraModelCost()
+		{
+			return 0;	
+		}
+	}
+	
+	// Dumbest form of encoding, just use a uniform distribution.
+	// Good as a sanity check
+	public static class UniformImageModeler extends BlobImageModeler
+	{
+		// {{{ 
 		private DumbPixelBlob _mirrBlob;
 		
-		private Map<Integer, CachedSumLookup<Short>> _pred2ModMap = Util.treemap();
-				
+		private CachedSumLookup<Short> _pixelModMap;
+		
 		private final int _imWidth;
 		private final int _imHight;
 		
-		SimplePredictionModeler(int wid, int hit)
+		UniformImageModeler(int wid, int hit)
 		{
 			_imWidth = wid;
 			_imHight = hit;
@@ -34,6 +48,144 @@ public class ImageEncDemo
 		
 		public void recModel(EncoderHook enchook)
 		{
+			_mirrBlob = new DumbPixelBlob(_imWidth, _imHight);
+			
+			for(int x : Util.range(_imWidth))
+			{
+				for(int y : Util.range(_imHight))
+				{
+					for(int i : Util.range(3))
+					{
+						EventModeler<Short> pixmod = EventModeler.build(_pixelModMap);
+						
+						if(isEncode())
+						{
+							Short origpix = _origOutcome.pixBlob[x][y][i];
+							pixmod.setOriginal(origpix);
+						}
+						
+						_mirrBlob.pixBlob[x][y][i] = pixmod.decodeResult(enchook);
+					}
+				}
+			}
+		}
+		
+		public DumbPixelBlob getResult()
+		{
+			return _mirrBlob;	
+		}
+		
+		void initPixelModMap()
+		{
+			List<Short> slist = Util.vector();
+			
+			for(int i : Util.range(256))
+				{ slist.add((short) i); }
+			
+			SortedMap<Short, Integer> unimap = EncoderUtil.buildUniformCountMap(slist);
+			
+			_pixelModMap = CachedSumLookup.build(unimap);
+		}
+		
+		// }}}
+	}	
+
+	
+	public static class AdaptiveBasicModeler extends BlobImageModeler
+	{
+		// {{{
+		
+		private DumbPixelBlob _mirrBlob;
+		
+		private final int _imWidth;
+		private final int _imHight;
+		
+		private SortedMap<Short, Integer> _pixelModMap = Util.treemap();
+		
+		private CachedSumLookup<Short> _lookupMap = null;
+		
+		AdaptiveBasicModeler(int wid, int hit)
+		{
+			_imWidth = wid;
+			_imHight = hit;
+			
+			for(int pix : Util.range(256))
+				{ _pixelModMap.put((short) pix, 1); }
+		}
+		
+		public void recModel(EncoderHook enchook) 
+		{
+			int pixcount = 0;
+			_mirrBlob = new DumbPixelBlob(_imWidth, _imHight);
+			
+			for(int x : Util.range(_imWidth))
+			{
+				for(int y : Util.range(_imHight))
+				{
+					for(int i : Util.range(3))
+					{
+						int predictor = (x == 0 ? -1 : _mirrBlob.pixBlob[x-1][y][i]);
+						
+						EventModeler<Short> pixmod = EventModeler.build(getLookupMap());
+						
+						if(isEncode())
+						{
+							Short origpix = _origOutcome.pixBlob[x][y][i];
+							pixmod.setOriginal(origpix);
+						}
+						
+						short pixelresult = pixmod.decodeResult(enchook);
+						
+						_mirrBlob.pixBlob[x][y][i] = pixelresult;
+						
+						Util.incHitMap(_pixelModMap, pixelresult);
+						
+						pixcount++;
+						
+						if((pixcount % 1000) == 0)
+							{ _lookupMap = null; }
+					}
+				}
+			}
+		}
+		
+		public CachedSumLookup<Short> getLookupMap()
+		{
+			if(_lookupMap == null)
+				{ _lookupMap = CachedSumLookup.build(_pixelModMap); }
+			
+			return _lookupMap;
+		}
+		
+		public DumbPixelBlob getResult()
+		{
+			return _mirrBlob;	
+		}
+		
+		// }}}			
+	}
+	
+	public static class OfflinePredictionModeler extends BlobImageModeler
+	{
+		// {{{
+		
+		private DumbPixelBlob _mirrBlob;
+		
+		private Map<Integer, CachedSumLookup<Short>> _pred2ModMap = Util.treemap();
+				
+		private final int _imWidth;
+		private final int _imHight;
+		
+		OfflinePredictionModeler(int wid, int hit)
+		{
+			_imWidth = wid;
+			_imHight = hit;
+		}
+		
+		public void recModel(EncoderHook enchook)
+		{
+			initPixelModMap();
+			
 			_mirrBlob = new DumbPixelBlob(_imWidth, _imHight);
 			
 			for(int x : Util.range(_imWidth))
@@ -60,22 +212,82 @@ public class ImageEncDemo
 			}
 		}
 		
+		@Override
+		public int getExtraModelCost()
+		{
+			File statfile = new File(getStatDataPath());
+			return (int) statfile.length();
+		}		
+		
+		
+		@Override
+		public void setOriginalSub()
+		{
+			try { writeDeltaFile(_origOutcome); }
+			catch (IOException ioex) { throw new RuntimeException(ioex); }
+		}
+		
+		static void writeDeltaFile(DumbPixelBlob dpblob) throws IOException
+		{
+			SortedMap<Integer, SortedMap<Integer, Integer>> deltamap = Util.treemap();
+			
+			for(int i : Util.range(256))
+			{ 
+				deltamap.put(i, Util.treemap());
+				
+				for(int j : Util.range(256))
+					{ deltamap.get(i).put(j, 1); }
+			}			
+			
+			
+			for(int x : Util.range(1, dpblob.getWidth()))
+			{
+				for(int y : Util.range(dpblob.getHight()))
+				{
+					for(int i : Util.range(3))
+					{
+						int prvpix = dpblob.pixBlob[x-1][y][i];
+						int nxtpix = dpblob.pixBlob[x  ][y][i];
+						
+						Util.incHitMap(deltamap.get(prvpix), nxtpix);
+					}
+				}
+			}
+			
+			List<String> reclist = Util.vector();
+			
+			for(int i : Util.range(256))
+			{
+				// Record break line
+				reclist.add("------------------ // value " + i);
+				
+				for(int j : Util.range(256))
+					{ reclist.add(deltamap.get(i).get(j)+""); }
+			}
+			
+			Util.writeLineList(new File(getStatDataPath()), reclist, rec -> rec);
+			Util.pf("Wrote %d lines to %s\n", reclist.size(), getStatDataPath()); 
+		}
+		
+		
 		public DumbPixelBlob getResult()
 		{
 			return _mirrBlob;	
-			
 		}
 		
-		void initPixelModMap()
+		private static String getStatDataPath()
 		{
-			/*
-			List<String> reclist = FileUtils.getReaderUtil()
-								.setFile("/userdata/lifecode/datadir/ENC_DATA_MAP.txt")
-								.readLineListE();
-								
-			*/
+			return ExampleUtil.getDataFile(EncodeDataType.image, "IMAGE_STAT_DATA.txt.gz").getAbsolutePath();
+		}
+		
+		void initPixelModMap() 
+		{
+			List<String> reclist; 
 			
-			List<String> reclist = Util.vector();
+			try { reclist = Util.readLineList(getStatDataPath()); }
+			catch (IOException ioex) { throw new RuntimeException(ioex); }
+			
+			Util.pf("Read %d stat lines from %s\n", reclist.size(), getStatDataPath());
 			
 			LinkedList<String> gimplist = new LinkedList<String>(reclist);
 			
@@ -107,11 +319,14 @@ public class ImageEncDemo
 			_pred2ModMap.put(-1, CachedSumLookup.build(globalmap));
 		}
 		
-		
+		// }}}	
 	}	
 	
-	public static class SmartFlushImageModeler extends ModelerTree<DumbPixelBlob>
+
+	public static class AdaptivePredictionModeler extends BlobImageModeler
 	{
+		// {{{
+		
 		private DumbPixelBlob _mirrBlob;
 		
 		// These are the actual underlying statistics. 
@@ -127,7 +342,7 @@ public class ImageEncDemo
 		
 		private int _totalPix = 0;
 		
-		SmartFlushImageModeler(int wid, int hit, int ppflush)
+		AdaptivePredictionModeler(int wid, int hit, int ppflush)
 		{
 			_imWidth = wid;
 			_imHight = hit;
@@ -191,7 +406,7 @@ public class ImageEncDemo
 		{
 			if(_pred2ModMap.isEmpty())
 			{
-				Util.pf("Rebuilding cache maps from stats..., pixcount is %d \n", _totalPix);
+				// Util.pf("Rebuilding cache maps from stats..., pixcount is %d \n", _totalPix);
 				
 				for(int pred : _statMap.keySet())
 					{ _pred2ModMap.put(pred, CachedSumLookup.build(_statMap.get(pred))); }
@@ -202,73 +417,15 @@ public class ImageEncDemo
 			
 			return _pred2ModMap.get(predictor);
 		}
+		
+		// }}}
 	}		
 	
-	
-	
-	public static class BasicImageModeler extends ModelerTree<DumbPixelBlob>
-	{
-		private DumbPixelBlob _mirrBlob;
-		
-		private CachedSumLookup<Short> _pixelModMap;
-		
-		private final int _imWidth;
-		private final int _imHight;
-		
-		BasicImageModeler(int wid, int hit)
-		{
-			_imWidth = wid;
-			_imHight = hit;
-			
-			initPixelModMap();
-		}
-		
-		public void recModel(EncoderHook enchook)
-		{
-			_mirrBlob = new DumbPixelBlob(_imWidth, _imHight);
-			
-			for(int x : Util.range(_imWidth))
-			{
-				for(int y : Util.range(_imHight))
-				{
-					for(int i : Util.range(3))
-					{
-						EventModeler<Short> pixmod = EventModeler.build(_pixelModMap);
-						
-						if(isEncode())
-						{
-							Short origpix = _origOutcome.pixBlob[x][y][i];
-							pixmod.setOriginal(origpix);
-						}
-						
-						_mirrBlob.pixBlob[x][y][i] = pixmod.decodeResult(enchook);
-					}
-				}
-			}
-		}
-		
-		public DumbPixelBlob getResult()
-		{
-			return _mirrBlob;	
-		}
-		
-		void initPixelModMap()
-		{
-			List<Short> slist = Util.vector();
-			
-			for(int i : Util.range(256))
-				{ slist.add((short) i); }
-			
-			SortedMap<Short, Integer> unimap = EncoderUtil.buildUniformCountMap(slist);
-			
-			_pixelModMap = CachedSumLookup.build(unimap);
-		}
-	}
-	
-	
-	
+	// Just a dumb package for holding pixels.
 	public static class DumbPixelBlob
 	{
+		// {{{
+		
 		short[][][] pixBlob;
 		
 		DumbPixelBlob(int w, int h)
@@ -307,6 +464,11 @@ public class ImageEncDemo
 			catch (IOException ioex) 
 				{ throw new RuntimeException(ioex); }			
 		}
+		
+		static DumbPixelBlob readFromFile(File bmpfile)
+		{
+			return readFromFile(bmpfile.getAbsolutePath());			
+		}		
 		
 		public BufferedImage composeImage()
 		{
@@ -358,76 +520,7 @@ public class ImageEncDemo
 			
 			return true;
 		}
-	}
-	
-	
-
-	
-	public static class BuildPredictDeltaData extends ArgMapRunnable
-	{
-		SortedMap<Integer, SortedMap<Integer, Integer>> _dataMap = Util.treemap();
 		
-		public void runOp()
-		{
-			initDataMap();
-			
-			DumbPixelBlob dpblob = DumbPixelBlob.readFromFile("/Users/burfoot/Desktop/OrigImage.bmp");
-			
-			for(int x : Util.range(1, dpblob.getWidth()))
-			{
-				for(int y : Util.range(dpblob.getHight()))
-				{
-					for(int i : Util.range(3))
-					{
-						int prvpix = dpblob.pixBlob[x-1][y][i];
-						int nxtpix = dpblob.pixBlob[x  ][y][i];
-						
-						_dataMap.putIfAbsent(prvpix, Util.treemap());
-						
-						Util.incHitMap(_dataMap.get(prvpix), nxtpix);
-						
-						// short a = dpblob.pixBlob[x][y][
-					
-					}
-				}
-			}
-			
-			List<String> reclist = Util.vector();
-			
-			for(int i : Util.range(256))
-			{
-				reclist.add("------------------ // value " + i);
-				
-				for(int j : Util.range(256))
-					{ reclist.add(_dataMap.get(i).get(j)+""); }
-			}
-			
-			Util.massert(false, "Need to re-implement");
-			
-			/*
-			FileUtils.getWriterUtil()
-					.setFile("/userdata/lifecode/datadir/ENC_DATA_MAP.txt")
-					.writeLineListE(reclist);
-					
-			*/
-			
-			// for(int
-		}
-		
-		private void initDataMap()
-		{
-			for(int i : Util.range(256))
-			{ 
-				_dataMap.put(i, Util.treemap());
-				
-				for(int j : Util.range(256))
-					{ _dataMap.get(i).put(j, 1); }
-					
-			}
-		}
+		// }}}
 	}
-	
-	
-
-	
 }	

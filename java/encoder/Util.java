@@ -2,6 +2,7 @@ package net.danburfoot.shared;
 
 import java.io.*;
 import java.util.*;
+import java.util.zip.*;
 import java.util.function.*;
 
 /**
@@ -215,7 +216,12 @@ public abstract class Util
 	
 	public static <A> List<A> readLineList(String fpath, Function<String, A> myfunc) throws IOException
 	{
-		BufferedReader bread = new BufferedReader(new FileReader(fpath));
+		InputStream instream = new FileInputStream(new File(fpath));
+		
+		if(fpath.endsWith(".gz"))
+			{ instream = new GZIPInputStream(instream); }
+		
+		BufferedReader bread = new BufferedReader(new InputStreamReader(instream));
 		
 		List<A> flist = Util.vector();
 		
@@ -229,6 +235,27 @@ public abstract class Util
 			flist.add(myfunc.apply(s));
 		}
 		
+		bread.close();
+		
 		return flist;
+	}
+	
+	public static <A> void writeLineList(File fpath, Collection<A> itemcol, Function<A, String> myfunc) throws IOException
+	{
+		OutputStream outstream = new FileOutputStream(fpath);
+		
+		if(fpath.getAbsolutePath().endsWith(".gz"))
+			{ outstream = new GZIPOutputStream(outstream); }
+		
+		PrintWriter pwrite = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outstream)));
+		
+		for(A item : itemcol)
+		{
+			String s = myfunc.apply(item);
+			pwrite.write(s);
+			pwrite.write("\n");
+		}
+		
+		pwrite.close();
 	}
 }
