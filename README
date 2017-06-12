@@ -4,25 +4,48 @@ WHAT THIS CODE IS
 
 This code is an implementation of the arithmetic encoding method for lossless data compression
 	using the "mirror" technique.
-A crucially difficult part of data compression is the problem of making sure
-	the encoder and decoder are exactly in synch.
-If they are out of synch, even to a slight degree, the transmission will fail completely.
-And it is very difficult to debug such errors.
-
-The mirror technique avoids this problem by running the SAME code for both the encoder and the decoder.
-The encoder builds up a "mirror image" of the data that the decoder sees,
-	and refers to the mirror data to perform all calculations. 
-
-Using the mirror technique, we can easily build up very complex compression methods
-	that require complex control flow branching, that depends on the 
-	values of the data being sent.
+Arithmetic encoding is powerful because it enables the encoder to be adapative - 
+	the model can change after every update.
+More importantly, the system can use a suite of different event/outcome types,
+	and the overall progression of the encoding procedure
+	can depend in arbitrary ways on the results of different events. 
 As a simple example, a compressor can first send the length of a String, 
 	and then execute a for-loop for a number of times equal to the length, 
 	sending an individual character in each iteration.
 	
+While this possibility is attractive in principle, 
+	in practice it can be quite difficult, because of the difficulty of
+	making sure that the encoder and decoder are perfectly aligned.
+If the two programs disagree about any tiny piece of the state of the encoding,
+	the entire transmission will fall apart.
+Furthermore, it is very difficult to debug these errors. 
+ 
+The mirror technique avoids this problem by running the SAME code for both the encoder and the decoder.
+The encoder builds up a "mirror image" of the data that the decoder sees,
+	and refers to the mirror data to perform all calculations. 
+Using the mirror technique, we can easily build up very complex compression methods
+	that require complex control flow branching, that depends on the 
+	values of the data being sent.
+In addition, compressor code written using the mirror technique is generally quite compact,
+	partly for the simple reason that both the encoder and decoder run the same method.
+One of the programs in the example package (AdaptivePredictionModeler)
+	shows a quite effective image compressor that requires only about 100 lines. 
+	
 This package has several pieces of example code that serve to illustrate the techniques.
 The examples are meant to be illustrative, not practically useful.
 
+The most technically sophisticated example is the WordBasedModeler in the StringEncDemo.
+This example shows how the encoder can take different logical paths 
+	through the encoding process, depending on the data it is sending. 
+In particular, it detects whether the next block of text to send is a 
+	miscellaneous character (punctuation or whitespace) or a regular word string. 
+If it is just a character,
+	it transmits the character using a simple character model. 
+If it is a full word,
+	it encodes the longest prefix of the word that has been seen in the data so far.
+Then it transmits any additional characters required to fill out the word. 
+Of course, it must transmit an additional flag to the decoder to indicate
+	which option is coming down the pipe (misc. char or full word).
 
 
 INSTALLATION
@@ -50,7 +73,8 @@ RUNNING THE EXAMPLES:
 ---------------------
 
 
-There are two main example types, one for images and one for text. There are a couple of test data items in the data/ directory.
+There are two main example types, one for images and one for text. 
+There are a couple of test data items in the data/ directory.
 
 Both types are invoked using the RunExample.py script. To run the text encoder, use the following command:
 
@@ -91,6 +115,7 @@ For image encoding, the model options are:
 	Encoder and decoder use this data for prediction.
 	This code reports the additional cost of the Gzip file to avoid "cheating"
 "adaptivepredict" - like offline predict, but adaptively computes the distribution as the image is being sent.
+	
 
 To encode an image, it must be in Bitmap for in the data/image directory. You can prepare a PNG image as follows:
 
