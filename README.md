@@ -95,7 +95,7 @@ The main limitation of this code in comparison to other methods of lossless data
 	2) it is not optimized for speed
 Given those limitations, what might it be useful for?
 
-** Experimentation and rapid prototyping for data compression**.
+**Experimentation and rapid prototyping for data compression**.
 High-performance, industrial strength
 	data compression techniques are time-consuming to develop.
 	Furthermore, because of the No Free Lunch Theorem of data compression, you can never really know 
@@ -120,8 +120,7 @@ To do this, transform your ML model into a compressor using MirrEnc,
 Then if you introduce a bug, you will either see an absolute compression failure
 	(the input doesn't match the output) or a spike in the compression rate.
 
-
-**Pedagogical Tool in Data Science/Information Theory/Statistics class **
+**Pedagogical Tool in Data Science/Information Theory/Statistics class**.
 A lot of ideas in the world of data science, information theory, and statistics can be off-puttingly abstract.
 What, exactly, does the Kullback-Liebler divergence mean? 
 What's the relationship between conditional entropy and mutual information?
