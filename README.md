@@ -60,9 +60,6 @@ In this example code snippet,
 	}	
 </pre>
 	
-	
-	
-	
 Using the mirror technique, we can easily build up very complex compression methods
 	that require complex control flow branching, that depends on the 
 	values of the data being sent.
@@ -71,21 +68,41 @@ In addition, compressor code written using the mirror technique is generally qui
 One of the programs in the example package (AdaptivePredictionModeler)
 	shows a quite effective image compressor that requires only about 100 lines. 
 	
-This package has several pieces of example code that serve to illustrate the techniques.
-The examples are meant to be illustrative, not practically useful.
+### Bring Your Own Model
 
-The most technically sophisticated example is the WordBasedModeler in the StringEncDemo.
-This example shows how the encoder can take different logical paths 
-	through the encoding process, depending on the data it is sending. 
-In particular, it detects whether the next block of text to send is a 
-	miscellaneous character (punctuation or whitespace) or a regular word string. 
-If it is just a character,
-	it transmits the character using a simple character model. 
-If it is a full word,
-	it encodes the longest prefix of the word that has been seen in the data so far.
-Then it transmits any additional characters required to fill out the word. 
-Of course, it must transmit an additional flag to the decoder to indicate
-	which option is coming down the pipe (misc. char or full word).
+One crucial conceptual point that is not always well-articulated in discussions 
+	of data compression is that the problem cleanly divides into two subproblems:
+	modeling and encoding.
+Modeling is the question of how to assign probabilities to the data events that
+	you want to transmit.
+For example, if you are encoding text character-by-character, you must apply some
+	function to the history of text that you've already sent in order to produce 
+	a probability model for the next character.
+If your model is good, you will get short codelengths, 
+	if not, you might end up actually *inflating* the size of the file.
+As you can probably see, this subproblem is incredibly open-ended: 
+	a general, optimal solution to the problem of modeling would 
+	be the equivalent of a godlike artificial intelligence.
+	
+Encoding, on the other hand, is the problem of using the supplied statistical model,
+	along with the data stream,
+	to generate a bit sequence.
+This must be done in such a way that the decoder can read the bit stream
+	and decipher the original data set.
+Furthermore, the resulting bit stream should be as short as possible,
+	ie it should achieve the Shannon codelength `L(x) = log2 P(x)`.
+For many purposes, **this problem has been conclusively solved by the arithmetic encoding technique**.
+Unless you are *very* concerned about computational cost
+	- and remember Knuth's maxim that premature optimization is the root of all evil - 
+	then you can just rely on arithmetic encoding and forget about everything else.
+
+Now that we've cleared up the distinction between modeling and encoding,
+	MirrEnc is a Bring Your Own Model (BYOM) library for arithmetic encoding.
+You figure out what the data outcomes are and how you want to model them,
+	and let MirrEnc do the rest.
+	
+	
+
 
 ### Potential Use Cases
 
@@ -191,6 +208,22 @@ jclass/net/danburfoot/encoder/EncoderUtil$CachedSumLookup.class
 </pre>
 
 ### Running the Examples
+
+This package has several pieces of example code that serve to illustrate the techniques.
+The examples are meant to be illustrative, not practically useful.
+
+The most technically sophisticated example is the WordBasedModeler in the StringEncDemo.
+This example shows how the encoder can take different logical paths 
+	through the encoding process, depending on the data it is sending. 
+In particular, it detects whether the next block of text to send is a 
+	miscellaneous character (punctuation or whitespace) or a regular word string. 
+If it is just a character,
+	it transmits the character using a simple character model. 
+If it is a full word,
+	it encodes the longest prefix of the word that has been seen in the data so far.
+Then it transmits any additional characters required to fill out the word. 
+Of course, it must transmit an additional flag to the decoder to indicate
+	which option is coming down the pipe (misc. char or full word).
 
 There are two main example types, one for images and one for text. 
 There are a couple of test data items in the data/ directory.
