@@ -108,14 +108,29 @@ Edit the `script/CompJava.py` file so that the INSTALL_DIR variable is your inst
 INSTALL_DIR = "/Users/burfoot/Desktop/mirrtest"
 </pre>
 
-- Now compile the code by running CompJava:
+Now compile the code by running `CompJava.py`. You could also just run the appropriate `javac` commands yourself.
 
 <pre>
-
 bash-3.2$ cd script/
 bash-3.2$ ./CompJava.py 
 javac -cp /Users/burfoot/Desktop/mirrtest/jclass -d /Users/burfoot/Desktop/mirrtest/jclass /Users/burfoot/Desktop/mirrtest/java/encoder/*.java
 javac -cp /Users/burfoot/Desktop/mirrtest/jclass -d /Users/burfoot/Desktop/mirrtest/jclass /Users/burfoot/Desktop/mirrtest/java/examp4enc/*.java
+</pre>
+
+Check that the Java class files have appeared in the `jclass` directory:
+
+<pre>
+bash-3.2$ find jclass | head
+jclass
+jclass/net
+jclass/net/danburfoot
+jclass/net/danburfoot/encoder
+jclass/net/danburfoot/encoder/ArithBitio.class
+jclass/net/danburfoot/encoder/EncoderUtil$1.class
+jclass/net/danburfoot/encoder/EncoderUtil$AcDecoder.class
+jclass/net/danburfoot/encoder/EncoderUtil$AcEncoder.class
+jclass/net/danburfoot/encoder/EncoderUtil$BufferedLookupTool.class
+jclass/net/danburfoot/encoder/EncoderUtil$CachedSumLookup.class
 </pre>
 
 RUNNING THE EXAMPLES:
