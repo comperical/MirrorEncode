@@ -133,23 +133,26 @@ jclass/net/danburfoot/encoder/EncoderUtil$BufferedLookupTool.class
 jclass/net/danburfoot/encoder/EncoderUtil$CachedSumLookup.class
 </pre>
 
-RUNNING THE EXAMPLES:
----------------------
-
+### Running the Examples
 
 There are two main example types, one for images and one for text. 
 There are a couple of test data items in the data/ directory.
 
 Both types are invoked using the RunExample.py script. To run the text encoder, use the following command:
 
+<pre>
 ./RunExample.py RunStrEncDemo modeltype=<modelname> bookname=<bookname>
+</pre>
 
 For example, the following command runs the "wordbased" model on the book "Sherlock":
 
+<pre>
 ./RunExample.py RunStrEncDemo modeltype=wordbased bookname=Sherlock
 java -cp /Users/burfoot/Desktop/mirrtest/jclass net.danburfoot.examp4enc.ExampleEntry RunStrEncDemo modeltype=wordbased bookname=Sherlock installdir=/Users/burfoot/Desktop/mirrtest
 Got string length 594915 for book Sherlock
 Encode success confirmed, required 224575 bytes, 0.377 byte/char, took 4.242 sec
+</pre>
+
 
 For text encoding, the model name options are:
 - "dumb"  - simplistic uniform encoding, achieves no more or less than 1 byte/character
