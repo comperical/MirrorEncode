@@ -130,7 +130,20 @@ For example, students can demonstrate by direct verification the basic
 	fact that the best compression rate for a data set is achieved by using
 	a model that matches the distribution that generated the data set
 
+**Build Complex, Multi-Model Data Compressors**.
+This is the application for which I originally developed the technique.
+In my work in Natural Language Processing,
+	I compress sentences using a highly complex model
+	that uses dozens of different submodels, rules, filters, and event types.
+For example, there is a component of this model 
+	that "knows" about English verb conjugation,
+	and uses this information to save bits when compressing grammatical English sentences.
+Due to the complexity of this model, 
+	it would be impossible to overcome the encoder/decoder synchronization problem
+	mentioned above without the mirror technique
+	(and the resulting code would also be unbearably ugly and hard to maintain).
 
+	
 
 ### Installation
 
