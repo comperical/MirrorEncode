@@ -80,7 +80,7 @@ For example, if you are encoding text character-by-character, you must apply som
 	a probability model for the next character.
 If your model is good, you will get short codelengths, 
 	if not, you might end up actually *inflating* the size of the file.
-As you can probably see, this subproblem is incredibly open-ended: 
+As you can probably see, this problem is incredibly open-ended: 
 	a general, optimal solution to the problem of modeling would 
 	be the equivalent of a godlike artificial intelligence.
 	
@@ -91,7 +91,7 @@ This must be done in such a way that the decoder can read the bit stream
 	and decipher the original data set.
 Furthermore, the resulting bit stream should be as short as possible,
 	ie it should achieve the Shannon codelength `L(x) = log2 P(x)`.
-For many purposes, **this problem has been conclusively solved by the arithmetic encoding technique**.
+For many purposes, **this subproblem has been conclusively solved by the arithmetic encoding technique**.
 Unless you are *very* concerned about computational cost
 	- and remember Knuth's maxim that premature optimization is the root of all evil - 
 	then you can just rely on arithmetic encoding and forget about everything else.
