@@ -138,7 +138,7 @@ jclass/net/danburfoot/encoder/EncoderUtil$CachedSumLookup.class
 There are two main example types, one for images and one for text. 
 There are a couple of test data items in the data/ directory.
 
-Both types are invoked using the RunExample.py script. To run the text encoder, use the following command:
+Both types are invoked using the `RunExample.py` script. To run the text encoder, use the following command:
 
 <pre>
 ./RunExample.py RunStrEncDemo modeltype=<modelname> bookname=<bookname>
@@ -155,11 +155,11 @@ Encode success confirmed, required 224575 bytes, 0.377 byte/char, took 4.242 sec
 
 
 For text encoding, the model name options are:
-- "dumb"  - simplistic uniform encoding, achieves no more or less than 1 byte/character
-- "unigram" - unigram character modeling, adapts to encode more common characters with shorter codes
-- "bigram" - bigram character modeling, tries to predict the next character from the preceding character
-- "trigram" - same as bigram except used previous two characters
-- "wordbased" - the most complex and powerful, encodes based on the probability of whole words. 
+1. "dumb"  - simplistic uniform encoding, achieves no more or less than 1 byte/character
+1. "unigram" - unigram character modeling, adapts to encode more common characters with shorter codes
+1. "bigram" - bigram character modeling, tries to predict the next character from the preceding character
+1. "trigram" - same as bigram except used previous two characters
+1. "wordbased" - the most complex and powerful, encodes based on the probability of whole words. 
 
 Most of these encoding options are basically quite simple, but the "wordbased" one uses a couple of good tricks.
 This compression method provides a good example of the power of the mirror-encoding style,
