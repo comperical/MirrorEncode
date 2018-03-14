@@ -12,11 +12,9 @@ import net.danburfoot.shared.Util.*;
 import net.danburfoot.encoder.*;
 import net.danburfoot.encoder.EncoderUtil.*;
 
-
 import net.danburfoot.examp4enc.ImageEncDemo.*; 
 import net.danburfoot.examp4enc.ExponentialDataDemo.*;
 import net.danburfoot.examp4enc.ExampleUtil.*;
-import net.danburfoot.examp4enc.StockUtil.*;
 
 // Entry point for all code in the Example package.
 public class ExampleEntry
@@ -146,35 +144,6 @@ public class ExampleEntry
 			
 			Util.pf("Encode success confirmed, required %d bytes, %.03f byte/char, took %.03f sec\n", 
 				bytebuf.length, ((double) bytebuf.length)/datastr.length(), (Util.curtime()-startup)/1000); 
-		}
-	}	
-	
-	
-	public static class PrepStockData extends ArgMapRunnable
-	{
-		public void runOp() throws IOException
-		{
-			Set<String> strset = Util.treeset();
-			
-			for(String onetick : StockUtil.TICKER_SET)
-			{
-				int convcount = StockUtil.convertStockData(onetick);
-				Util.pf("Converted %d records for ticker code %s\n", convcount, onetick);
-			}
-		}
-	}
-	
-	public static class ReadStockData extends ArgMapRunnable
-	{
-		public void runOp() throws IOException
-		{
-			Set<String> strset = Util.treeset();
-			
-			for(String onetick : StockUtil.TICKER_SET)
-			{
-				List<DimeStockRecord> reclist = StockUtil.readDimeStockData(onetick);
-				Util.pf("Loaded %d records for ticker symbol %s\n", reclist.size(), onetick);
-			}
 		}
 	}	
 	

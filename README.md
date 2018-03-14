@@ -33,31 +33,31 @@ In this example code snippet,
 	the entire process is run exactly the same way in both programs.	
 	
 <pre>
-		public void recModel(EncoderHook enchook)
+	public void recModel(EncoderHook enchook)
+	{
+		for(int pos = 0; pos < numChar; pos++)
 		{
-			for(int pos = 0; pos < numChar; pos++)
-			{
-				char prevchar = pos == 0 ? 'A' : _mirrBuf.charAt(pos-1);
-				
-				EventModeler<Character> evmod = EventModeler.build(getLookupMap(prevchar));
-				
-				if(isEncode())
-				{ 
-					char tosend = _origOutcome.charAt(pos);	
-					evmod.setOriginal(tosend);
-				}
-
-				char reschar = evmod.decodeResult(enchook);
-				
-				_mirrBuf.append(reschar);
-				
-				// Update the specific bigram map
-				Util.incHitMap(_dataMap.get(prevchar), reschar, 1);
-				
-				if((_mirrBuf.length() % _charPerFlush) == 0)
-					{ _lookupMap.clear(); }
+			char prevchar = pos == 0 ? 'A' : _mirrBuf.charAt(pos-1);
+			
+			EventModeler<Character> evmod = EventModeler.build(getLookupMap(prevchar));
+			
+			if(isEncode())
+			{ 
+				char tosend = _origOutcome.charAt(pos);	
+				evmod.setOriginal(tosend);
 			}
-		}	
+
+			char reschar = evmod.decodeResult(enchook);
+			
+			_mirrBuf.append(reschar);
+			
+			// Update the specific bigram map
+			Util.incHitMap(_dataMap.get(prevchar), reschar, 1);
+			
+			if((_mirrBuf.length() % _charPerFlush) == 0)
+				{ _lookupMap.clear(); }
+		}
+	}	
 </pre>
 	
 	
@@ -88,11 +88,13 @@ Of course, it must transmit an additional flag to the decoder to indicate
 	which option is coming down the pipe (misc. char or full word).
 
 
-INSTALLATION
------------------
-- create an installation directory. 
-- unzip the source code or clone the git repository into that directory
-- In this example, the installation directory is /Users/burfoot/Desktop/mirrtest:
+### Installation
+
+1. create an installation directory. 
+1. unzip the source code or clone the git repository into that directory
+1. In this example, the installation directory is /Users/burfoot/Desktop/mirrtest:
+
+
 bash-3.2$ pwd
 /Users/burfoot/Desktop/mirrtest
 bash-3.2$ ls
