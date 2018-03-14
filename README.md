@@ -1,5 +1,5 @@
 
-### Lossless BYOM Data Compression with the Mirror Technique
+### MirrEnc: Lossless BYOM Data Compression with the Mirror Technique
 
 This code is an implementation of the arithmetic encoding method for lossless data compression using the "mirror" technique.
 Arithmetic encoding is powerful because it enables the encoder to be adapative - the model can change after every update.
@@ -32,7 +32,8 @@ In this example code snippet,
 	with the sole exception of the if block under `isEncode`,
 	the entire process is run exactly the same way in both programs.	
 	
-<pre>
+	
+```java
 	public void recModel(EncoderHook enchook)
 	{
 		for(int pos = 0; pos < numChar; pos++)
@@ -58,7 +59,8 @@ In this example code snippet,
 				{ _lookupMap.clear(); }
 		}
 	}	
-</pre>
+```
+
 	
 Using the mirror technique, we can easily build up very complex compression methods
 	that require complex control flow branching, that depends on the 
@@ -100,8 +102,6 @@ Now that we've cleared up the distinction between modeling and encoding,
 	MirrEnc is a Bring Your Own Model (BYOM) library for arithmetic encoding.
 You figure out what the data outcomes are and how you want to model them,
 	and let MirrEnc do the rest.
-	
-	
 
 
 ### Potential Use Cases
