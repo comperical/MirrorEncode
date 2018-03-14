@@ -34,31 +34,31 @@ In this example code snippet,
 	
 	
 ```java
-	public void recModel(EncoderHook enchook)
+public void recModel(EncoderHook enchook)
+{
+	for(int pos = 0; pos < numChar; pos++)
 	{
-		for(int pos = 0; pos < numChar; pos++)
-		{
-			char prevchar = pos == 0 ? 'A' : _mirrBuf.charAt(pos-1);
-			
-			EventModeler<Character> evmod = EventModeler.build(getLookupMap(prevchar));
-			
-			if(isEncode())
-			{ 
-				char tosend = _origOutcome.charAt(pos);	
-				evmod.setOriginal(tosend);
-			}
-
-			char reschar = evmod.decodeResult(enchook);
-			
-			_mirrBuf.append(reschar);
-			
-			// Update the specific bigram map
-			Util.incHitMap(_dataMap.get(prevchar), reschar, 1);
-			
-			if((_mirrBuf.length() % _charPerFlush) == 0)
-				{ _lookupMap.clear(); }
+		char prevchar = pos == 0 ? 'A' : _mirrBuf.charAt(pos-1);
+		
+		EventModeler<Character> evmod = EventModeler.build(getLookupMap(prevchar));
+		
+		if(isEncode())
+		{ 
+			char tosend = _origOutcome.charAt(pos);	
+			evmod.setOriginal(tosend);
 		}
-	}	
+
+		char reschar = evmod.decodeResult(enchook);
+		
+		_mirrBuf.append(reschar);
+		
+		// Update the specific bigram map
+		Util.incHitMap(_dataMap.get(prevchar), reschar, 1);
+		
+		if((_mirrBuf.length() % _charPerFlush) == 0)
+			{ _lookupMap.clear(); }
+	}
+}	
 ```
 
 	
