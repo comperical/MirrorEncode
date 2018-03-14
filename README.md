@@ -87,6 +87,51 @@ Then it transmits any additional characters required to fill out the word.
 Of course, it must transmit an additional flag to the decoder to indicate
 	which option is coming down the pipe (misc. char or full word).
 
+### Potential Use Cases
+
+There are a lot of interesting use cases where you might want to use this technique.
+The main limitation of this code in comparison to other methods of lossless data compression are:
+	1) you must supply your own model
+	2) it is not optimized for speed
+Given those limitations, what might it be useful for?
+
+** Experimentation and rapid prototyping for data compression**.
+High-performance, industrial strength
+	data compression techniques are time-consuming to develop.
+	Furthermore, because of the No Free Lunch Theorem of data compression, you can never really know 
+	in advance what compression rates a new method will achieve on a particular data set.
+So you can use this library as a rapid-prototyping tool.
+You build the new method using MirrEnc and test it out on the target data.
+If it succeeds in achieving a desired compression rate, 
+	you can take the time to code up a fast implementation.
+If not, go back to the drawing board and keep experimenting.
+
+**Validate the performance of your machine-learning models**.
+I had a friend who tried his hand at algorithmic trading using ML techniques.
+His method was doing well for a couple of weeks,
+	but then he made a minor Python indentation mistake,
+	and because of that he lost tens of thousands of dollars.
+The basic problem is that ML models (and numeric computation in general)
+	cannot be unit- and regresion-tested like other types of software.
+Hooking up your ML model to a data compression test harness allows you
+	to be very confident you haven't introduced any bugs in your development cycle.
+To do this, transform your ML model into a compressor using MirrEnc,
+	and run the newest version of your code against some standard benchmark data set every night.
+Then if you introduce a bug, you will either see an absolute compression failure
+	(the input doesn't match the output) or a spike in the compression rate.
+
+
+**Pedagogical Tool in Data Science/Information Theory/Statistics class **
+A lot of ideas in the world of data science, information theory, and statistics can be off-puttingly abstract.
+What, exactly, does the Kullback-Liebler divergence mean? 
+What's the relationship between conditional entropy and mutual information?
+Students can connect these abstract ideas to real, tangible code 
+	using data compression software.
+For example, students can demonstrate by direct verification the basic 
+	fact that the best compression rate for a data set is achieved by using
+	a model that matches the distribution that generated the data set
+
+
 
 ### Installation
 
@@ -184,9 +229,9 @@ For image encoding, the model options are:
 1. "uniform" - simplistic uniform modeling, should get 1 byte/pixel
 1. "adaptivebasic" - unigram pixel modeling, adjusts to prefer more common pixel values
 1. "offlinepredict" - for each prediction pixel, calculates a full distribution of probabilities for the next pixel. 
-	Writes this data to a Gzip file, that is supposed to be sent "offline"
+	Writes this data to a Gzip file, that is supposed to be sent "offline".
 	Encoder and decoder use this data for prediction.
-	This code reports the additional cost of the Gzip file to avoid "cheating"
+	This code reports the additional cost of the Gzip file to avoid "cheating".
 1. "adaptivepredict" - like offline predict, but adaptively computes the distribution as the image is being sent.
 
 To encode an image, it must be in Bitmap for in the data/image directory. You can prepare a PNG image as follows:
