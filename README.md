@@ -130,7 +130,7 @@ For example, students can demonstrate by direct verification the basic
 	fact that the best compression rate for a data set is achieved by using
 	a model that matches the distribution that generated the data set
 
-**Build Complex, Multi-Model Data Compressors**.
+**Build Complex, Multicomponent Data Compressors**.
 This is the application for which I originally developed the technique.
 In my work in Natural Language Processing,
 	I compress sentences using a highly complex model
