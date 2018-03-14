@@ -155,18 +155,22 @@ Encode success confirmed, required 224575 bytes, 0.377 byte/char, took 4.242 sec
 
 
 For text encoding, the model name options are:
+
 1. "dumb"  - simplistic uniform encoding, achieves no more or less than 1 byte/character
 1. "unigram" - unigram character modeling, adapts to encode more common characters with shorter codes
 1. "bigram" - bigram character modeling, tries to predict the next character from the preceding character
 1. "trigram" - same as bigram except used previous two characters
 1. "wordbased" - the most complex and powerful, encodes based on the probability of whole words. 
 
-Most of these encoding options are basically quite simple, but the "wordbased" one uses a couple of good tricks.
+Most of these encoding options are basically quite simple, but the `wordbased` one uses a couple of good tricks.
 This compression method provides a good example of the power of the mirror-encoding style,
 	because it would otherwise be quite difficult to avoid encoder/decoder synchronization bugs for the word-based model. 
 	
 For image encoding, the system can be run using a command of the form:
+
+<pre>
 ./RunExample.py TestImageEncode modelername=<modelname> bitmapname=<bitmapname>
+</pre>
 
 EG:
 ./RunExample.py TestImageEncode modelername=adaptivebasic bitmapname=OrigImage
