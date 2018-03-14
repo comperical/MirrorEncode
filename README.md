@@ -147,7 +147,7 @@ Both types are invoked using the `RunExample.py` script. To run the text encoder
 For example, the following command runs the "wordbased" model on the book "Sherlock":
 
 <pre>
-./RunExample.py RunStrEncDemo modeltype=wordbased bookname=Sherlock
+bash-3.2$ ./RunExample.py RunStrEncDemo modeltype=wordbased bookname=Sherlock
 java -cp /Users/burfoot/Desktop/mirrtest/jclass net.danburfoot.examp4enc.ExampleEntry RunStrEncDemo modeltype=wordbased bookname=Sherlock installdir=/Users/burfoot/Desktop/mirrtest
 Got string length 594915 for book Sherlock
 Encode success confirmed, required 224575 bytes, 0.377 byte/char, took 4.242 sec
@@ -172,25 +172,29 @@ For image encoding, the system can be run using a command of the form:
 ./RunExample.py TestImageEncode modelername=<modelname> bitmapname=<bitmapname>
 </pre>
 
-EG:
-./RunExample.py TestImageEncode modelername=adaptivebasic bitmapname=OrigImage
+<pre>
+bash-3.2$ ./RunExample.py TestImageEncode modelername=adaptivebasic bitmapname=OrigImage
 java -cp /Users/burfoot/Desktop/mirrtest/jclass net.danburfoot.examp4enc.ExampleEntry TestImageEncode modelername=adaptivebasic bitmapname=OrigImage installdir=/Users/burfoot/Desktop/mirrtest
 Using modeler class AdaptiveBasicModeler
 Encoded byte size is 2299941, extra size is 0, pixel count is 2359296,  7.799 bit/pixel, took 4.666 sec
+</pre>
 
 For image encoding, the model options are:
-"uniform" - simplistic uniform modeling, should get 1 byte/pixel
-"adaptivebasic" - unigram pixel modeling, adjusts to prefer more common pixel values
-"offlinepredict" - for each prediction pixel, calculates a full distribution of probabilities for the next pixel. 
+
+1. "uniform" - simplistic uniform modeling, should get 1 byte/pixel
+1. "adaptivebasic" - unigram pixel modeling, adjusts to prefer more common pixel values
+1. "offlinepredict" - for each prediction pixel, calculates a full distribution of probabilities for the next pixel. 
 	Writes this data to a Gzip file, that is supposed to be sent "offline"
 	Encoder and decoder use this data for prediction.
 	This code reports the additional cost of the Gzip file to avoid "cheating"
-"adaptivepredict" - like offline predict, but adaptively computes the distribution as the image is being sent.
+1. "adaptivepredict" - like offline predict, but adaptively computes the distribution as the image is being sent.
 
 To encode an image, it must be in Bitmap for in the data/image directory. You can prepare a PNG image as follows:
 
+<pre>
 bash-3.2$ ./RunExample.py PrepareImageFile imagepath=/Users/burfoot/Desktop/SimpleArrow.png
 java -cp /Users/burfoot/Desktop/mirrtest/jclass net.danburfoot.examp4enc.ExampleEntry PrepareImageFile imagepath=/Users/burfoot/Desktop/SimpleArrow.png installdir=/Users/burfoot/Desktop/mirrtest
 Wrote bit map file to /Users/burfoot/Desktop/mirrtest/data/image/SimpleArrow.bmp
+</pre>
 
 
