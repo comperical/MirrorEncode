@@ -75,6 +75,8 @@ One of the programs in the example package (AdaptivePredictionModeler)
 One crucial conceptual point that is not always well-articulated in discussions 
 	of data compression is that the problem cleanly divides into two subproblems:
 	modeling and encoding.
+
+	
 Modeling is the question of how to assign probabilities to the data events that
 	you want to transmit.
 For example, if you are encoding text character-by-character, you must apply some
@@ -109,7 +111,7 @@ You figure out what the data outcomes are and how you want to model them,
 There are a lot of interesting use cases where you might want to use this technique.
 The main limitation of this code in comparison to other methods of lossless data compression are:
 	1) you must supply your own model
-	2) it is not optimized for speed
+	2) it is not optimized for speed.
 Given those limitations, what might it be useful for?
 
 **Experimentation and rapid prototyping for data compression**.
