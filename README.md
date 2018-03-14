@@ -95,21 +95,28 @@ Of course, it must transmit an additional flag to the decoder to indicate
 1. In this example, the installation directory is /Users/burfoot/Desktop/mirrtest:
 
 
+<pre>
 bash-3.2$ pwd
 /Users/burfoot/Desktop/mirrtest
 bash-3.2$ ls
 LICENSE	data	java	jclass	script
+</pre>
 
-Edit the script/CompJava.py file so that the INSTALL_DIR variable is your install directory:
+Edit the `script/CompJava.py` file so that the INSTALL_DIR variable is your install directory:
 
+<pre>
 INSTALL_DIR = "/Users/burfoot/Desktop/mirrtest"
+</pre>
 
 - Now compile the code by running CompJava:
+
+<pre>
 
 bash-3.2$ cd script/
 bash-3.2$ ./CompJava.py 
 javac -cp /Users/burfoot/Desktop/mirrtest/jclass -d /Users/burfoot/Desktop/mirrtest/jclass /Users/burfoot/Desktop/mirrtest/java/encoder/*.java
 javac -cp /Users/burfoot/Desktop/mirrtest/jclass -d /Users/burfoot/Desktop/mirrtest/jclass /Users/burfoot/Desktop/mirrtest/java/examp4enc/*.java
+</pre>
 
 RUNNING THE EXAMPLES:
 ---------------------
