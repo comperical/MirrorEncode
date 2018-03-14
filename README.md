@@ -20,7 +20,7 @@ If the internal data structures used by the two programs
 	I spent many long, frustrated nights trying vainly to debug
 	these types of errors.)
  
-The mirror technique avoids this problem by running the SAME code for both the encoder and the decoder.
+The mirror technique avoids this subproblem by running the SAME code for both the encoder and the decoder.
 The encoder builds up a "mirror image" of the data that the decoder sees,
 	and refers to the mirror data to perform all calculations. 
 For example, if we are using an adaptive scheme where
