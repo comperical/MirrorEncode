@@ -44,6 +44,18 @@ public abstract class Util
 	{
 		return System.currentTimeMillis();	
 	}
+	
+	public static <A, B> B reduce(Collection<A> mycol, B initval, Function<Pair<B, A>, B> myfunc)
+	{	
+		B myval = initval;
+		
+		for(A item : mycol)
+		{
+			myval = myfunc.apply(Pair.build(myval, item));
+		}
+		
+		return myval;
+	}	
 		
 	@SuppressWarnings("unchecked")	
 	public static <A> A cast(Object o)

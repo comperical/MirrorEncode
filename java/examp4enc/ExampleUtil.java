@@ -76,4 +76,40 @@ public class ExampleUtil
 		return getDataFile(EncodeDataType.text, txtfile);		
 	}
 	
+	
+	public static List<Integer> generateDataFromModel(SortedMap<Integer, Integer> probmap, int N, Random jr)
+	{
+		Util.massert(probmap.size() == 6 && probmap.containsKey(6),
+						"Bad probmap keys for a 6-sided die");
+		
+		int total = Util.reduce(probmap.values(), 0, pr -> pr._1+pr._2);
+		
+		List<Integer> reslist = Util.listify();
+		
+		for(int i : Util.range(N))
+		{
+			int next = jr.nextInt(total);
+			
+			reslist.add(lookupSample(probmap, next));
+		}
+		
+		return reslist;
+	}
+	
+	private static <K extends Comparable<K>> K lookupSample(SortedMap<K, Integer> probmap, int randint)
+	{
+		for(K key : probmap.keySet())
+		{
+			int v = probmap.get(key);
+			
+			if(randint < v)
+				{ return key; }
+			
+			randint -= v;
+		}
+		
+		Util.massert(false, "Input number too large");
+		return null;
+	}	
+	
 }	

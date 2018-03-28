@@ -44,7 +44,7 @@ if __name__ == "__main__":
 	2) Compile it
 	""" 
 	
-	# copyCode2Dir()
+	#copyCode2Dir()
 
 	compileDir('encoder')
 	compileDir('examp4enc')

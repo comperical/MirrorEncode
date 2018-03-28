@@ -15,6 +15,7 @@ import net.danburfoot.encoder.EncoderUtil.*;
 import net.danburfoot.examp4enc.ImageEncDemo.*; 
 import net.danburfoot.examp4enc.ExponentialDataDemo.*;
 import net.danburfoot.examp4enc.ExampleUtil.*;
+import net.danburfoot.examp4enc.BiasedDiceExample.*;
 
 // Entry point for all code in the Example package.
 public class ExampleEntry
@@ -146,6 +147,68 @@ public class ExampleEntry
 				bytebuf.length, ((double) bytebuf.length)/datastr.length(), (Util.curtime()-startup)/1000); 
 		}
 	}	
+	
+	
+	public static class BiasedDieDemo extends ArgMapRunnable
+	{
+		public void runOp()
+		{
+			int N = _argMap.getInt("numsamp", 100);
+			
+			SortedMap<Integer, Integer> unifmap = BiasedDiceExample.getUniform6Model();
+			SortedMap<Integer, Integer> biasmap = BiasedDiceExample.getBiased6Model();
+			
+			List<Integer> data = ExampleUtil.generateDataFromModel(biasmap, N, new Random());
+			
+			double unifcost = BiasedDiceExample.encodeAndCheck(unifmap, data);
+			double biascost = BiasedDiceExample.encodeAndCheck(biasmap, data);
+			
+			Util.pf("Encode check passed, uniform cost is %.03f, bias model cost is %.03f\n",
+					unifcost, biascost);
+			
+			Util.pf("Penalty is %.03f total, %.03f/sample, N=%d samples\n",
+				unifcost - biascost, (unifcost - biascost)/N, N);
+			
+			double kldiverge = EncoderUtil.KL_divergence(biasmap, unifmap);
+			Util.pf("Theoretically predicted penalty is %.03f\n", kldiverge);
+			
+		}
+		
+
+	}
+	
+	public static class AdaptiveDieDemo extends ArgMapRunnable
+	{
+		public void runOp()
+		{
+			int N = _argMap.getInt("numsamp", 100);
+			
+			SortedMap<Integer, Integer> realprob = BiasedDiceExample.getBiased6Model();
+			List<Integer> data = ExampleUtil.generateDataFromModel(realprob, N, new Random());
+			
+			double bestcost;
+			double adptcost;
+			{
+				Flat6SideModel encmod = new Flat6SideModel(realprob, data.size());
+				Flat6SideModel decmod = new Flat6SideModel(realprob, data.size());
+				bestcost = BiasedDiceExample.encodeAndCheck(encmod, decmod, data);
+			}
+			
+			{
+				Adaptive6SideModel encmod = new Adaptive6SideModel(data.size());
+				Adaptive6SideModel decmod = new Adaptive6SideModel(data.size());
+				adptcost = BiasedDiceExample.encodeAndCheck(encmod, decmod, data);
+			}			
+						
+			Util.pf("Encode check passed, real model cost is %.03f, adaptive model cost is %.03f\n",
+					bestcost, adptcost);
+			
+			Util.pf("Penalty is %.03f total, %.03f/sample, N=%d samples\n",
+				adptcost - bestcost, (adptcost - bestcost)/N, N);
+		}
+	}	
+	
+	
 	
 	
 	public static void main(String[] args) throws Exception

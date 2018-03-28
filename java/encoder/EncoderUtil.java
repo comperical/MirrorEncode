@@ -25,16 +25,40 @@ public abstract class EncoderUtil
 		Util.massert(prob > 1e-30, "Prob value is too small");
 		return -Math.log(prob)/LOG2;	
 	}
-			
-	public static final String SEQ_END = "END_SEQ";
-			
-	private static TreeMap<String, Integer> _END_SING_MAP = Util.treemap();
 	
-	static { _END_SING_MAP.put(SEQ_END, 1); }
-	
-	public static SortedMap<String, Integer> getEndSeqSingMap()
+	public static double clen4uniform(int M)
 	{
-		return Collections.unmodifiableSortedMap(_END_SING_MAP);	
+		double P = 1.0D;
+		P /= M;
+		return -Math.log(P)/LOG2;
+	}
+			
+	public static <K> double KL_divergence(Map<K, Integer> P, Map<K, Integer> Q)
+	{
+		Util.massert(P.size() == Q.size(), 
+			"Size mismatch in probability distributions");
+		
+		double dtotal = 0D;
+		
+		int ptotal = Util.reduce(P.values(), 0, pr -> pr._1 + pr._2);
+		int qtotal = Util.reduce(Q.values(), 0, pr -> pr._1 + pr._2);
+		
+		for(K item : P.keySet())
+		{
+			Util.massert(Q.containsKey(item),
+				"Item %s is not available in model Q", item);
+			
+			double pi = P.get(item);
+			double qi = Q.get(item);
+			
+			pi /= ptotal;
+			qi /= qtotal;
+			
+			double logratio = Math.log((pi / qi));
+			dtotal += pi * logratio;
+		}
+		
+		return dtotal / LOG2;
 	}
 	
 	/** 
@@ -56,6 +80,9 @@ public abstract class EncoderUtil
 		public default void startRegion(Enum e) { }
 		
 		public default void endRegion(Enum e) { }
+		
+		// Pop the most recent region
+		public default void endRegion() {}
 		
 	}		
 	
